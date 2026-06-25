@@ -11,7 +11,7 @@ Static browser app for cleaning customer import workbooks.
 - Show distinct `Customer Type` values with counts.
 - Clean `Tags` by trimming comma-separated values and removing duplicates.
 - Blank `Invoice Payment Due` when the value is `0`.
-- Split `Notes` by `<Note_Separator>` and make `Note Types` count match the number of notes.
+- Check that the number of notes split by `<Note_Separator>` matches the comma-separated count in `Note Types`, without changing either column.
 
 ## Local run
 

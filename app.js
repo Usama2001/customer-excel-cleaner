@@ -186,7 +186,7 @@ const state = {
     addressFixes: 0,
     tagFixes: 0,
     paymentFixes: 0,
-    noteFixes: 0,
+    noteIssues: 0,
   },
   outputFileName: "cleaned_customers.xlsx",
 };
@@ -216,7 +216,7 @@ function bindElements() {
   elements.addressFixes = document.querySelector("#addressFixes");
   elements.tagFixes = document.querySelector("#tagFixes");
   elements.paymentFixes = document.querySelector("#paymentFixes");
-  elements.noteFixes = document.querySelector("#noteFixes");
+  elements.noteIssues = document.querySelector("#noteIssues");
   elements.typeCount = document.querySelector("#typeCount");
   elements.typeList = document.querySelector("#typeList");
   elements.previewCount = document.querySelector("#previewCount");
@@ -360,7 +360,7 @@ function cleanWorkbookRows(rows) {
     addressFixes: 0,
     tagFixes: 0,
     paymentFixes: 0,
-    noteFixes: 0,
+    noteIssues: 0,
   };
   const cleanedRows = dataRows.map((row) => {
     const sourceName = getSourceValue(row, headerMap, "Name");
@@ -389,8 +389,8 @@ function cleanWorkbookRows(rows) {
       if (header === "Tags") return cleanTagsValue;
       if (header in cleanAddress) return cleanAddress[header];
       if (header === "Invoice Payment Due") return cleanPaymentDue;
-      if (header === "Notes") return noteResult.notes;
-      if (header === "Note Types") return noteResult.noteTypes;
+      if (header === "Notes") return preserveCell(getSourceValue(row, headerMap, "Notes"));
+      if (header === "Note Types") return preserveCell(getSourceValue(row, headerMap, "Note Types"));
       return preserveCell(getSourceValue(row, headerMap, header));
     });
 
@@ -399,7 +399,7 @@ function cleanWorkbookRows(rows) {
     if (toText(sourceTags) !== cleanTagsValue) stats.tagFixes += 1;
     if (addressChanged(row, headerMap, cleanAddress)) stats.addressFixes += 1;
     if (toText(sourcePaymentDue) !== toText(cleanPaymentDue)) stats.paymentFixes += 1;
-    if (noteResult.changed) stats.noteFixes += 1;
+    if (noteResult.hasIssue) stats.noteIssues += 1;
     if (cleanCustomerType) {
       typeCounts.set(cleanCustomerType, (typeCounts.get(cleanCustomerType) || 0) + 1);
     }
@@ -591,39 +591,19 @@ function addressChanged(row, headerMap, cleanAddress) {
 }
 
 function cleanNotesAndTypes(notesValue, noteTypesValue) {
-  const notes = splitNotes(notesValue);
-  const noteCount = notes.length;
-  const sourceNoteTypes = splitNoteTypes(noteTypesValue);
-  let cleanTypes = [];
-
-  if (noteCount > 0) {
-    if (sourceNoteTypes.length === 0) {
-      cleanTypes = Array(noteCount).fill("2");
-    } else {
-      cleanTypes = sourceNoteTypes.slice(0, noteCount);
-      while (cleanTypes.length < noteCount) {
-        cleanTypes.push(cleanTypes[cleanTypes.length - 1] || "2");
-      }
-    }
-  }
-
-  const cleanNotes = notes.join(" <Note_Separator> ");
-  const cleanNoteTypes = cleanTypes.join(",");
+  const noteCount = countNotes(notesValue);
+  const noteTypeCount = splitNoteTypes(noteTypesValue).length;
   return {
-    notes: cleanNotes,
-    noteTypes: cleanNoteTypes,
-    changed:
-      toText(notesValue) !== cleanNotes ||
-      toText(noteTypesValue) !== cleanNoteTypes ||
-      sourceNoteTypes.length !== noteCount,
+    noteCount,
+    noteTypeCount,
+    hasIssue: noteCount !== noteTypeCount,
   };
 }
 
-function splitNotes(value) {
-  return toText(value)
-    .split(/<\s*Note_Separator\s*>/i)
-    .map((note) => normalizeSpaces(note))
-    .filter(Boolean);
+function countNotes(value) {
+  const text = toText(value);
+  if (!text.trim()) return 0;
+  return text.split(/<\s*Note_Separator\s*>/i).filter((note) => note.trim() !== "").length;
 }
 
 function splitNoteTypes(value) {
@@ -647,7 +627,7 @@ function renderResults() {
   elements.addressFixes.textContent = state.stats.addressFixes.toLocaleString();
   elements.tagFixes.textContent = state.stats.tagFixes.toLocaleString();
   elements.paymentFixes.textContent = state.stats.paymentFixes.toLocaleString();
-  elements.noteFixes.textContent = state.stats.noteFixes.toLocaleString();
+  elements.noteIssues.textContent = state.stats.noteIssues.toLocaleString();
   renderTypes();
   renderPreview();
   refreshIcons();
@@ -708,7 +688,7 @@ function resetResults() {
     addressFixes: 0,
     tagFixes: 0,
     paymentFixes: 0,
-    noteFixes: 0,
+    noteIssues: 0,
   };
   elements.downloadButton.disabled = true;
   renderResults();
