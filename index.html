@@ -14,12 +14,37 @@
       <header class="topbar">
         <div>
           <p class="eyebrow">Excel Operations</p>
-          <h1>Customer Cleaner</h1>
+          <h1 id="pageTitle">Import Cleaner</h1>
         </div>
-        <div id="statusBadge" class="status-badge">Ready</div>
+        <div class="topbar-actions">
+          <button id="homeButton" class="ghost-action" type="button" hidden>
+            <i data-lucide="arrow-left" aria-hidden="true"></i>
+            <span>Back</span>
+          </button>
+          <div id="statusBadge" class="status-badge" hidden>Ready</div>
+        </div>
       </header>
 
-      <main class="workspace">
+      <main id="homeView" class="module-grid" aria-label="Import types">
+        <button class="module-card" type="button" data-module="customer">
+          <span>Customer</span>
+          <strong>Import</strong>
+        </button>
+        <button class="module-card" type="button" data-module="site" aria-disabled="true">
+          <span>site</span>
+          <strong>Import</strong>
+        </button>
+        <button class="module-card" type="button" data-module="asset" aria-disabled="true">
+          <span>Asset</span>
+          <strong>Import</strong>
+        </button>
+        <button class="module-card" type="button" data-module="job" aria-disabled="true">
+          <span>job</span>
+          <strong>Import</strong>
+        </button>
+      </main>
+
+      <main id="customerView" class="workspace view-hidden">
         <section class="control-panel" aria-label="Workbook controls">
           <div class="panel-heading">
             <div>
@@ -64,6 +89,14 @@
               <span>Tag Fixes</span>
               <strong id="tagFixes">0</strong>
             </article>
+            <article class="metric">
+              <span>Payment Fixes</span>
+              <strong id="paymentFixes">0</strong>
+            </article>
+            <article class="metric">
+              <span>Note Fixes</span>
+              <strong id="noteFixes">0</strong>
+            </article>
           </div>
 
           <div class="content-grid">
@@ -91,12 +124,15 @@
                       <th>Address3</th>
                       <th>Address4</th>
                       <th>Post Code</th>
+                      <th>Invoice Payment Due</th>
+                      <th>Notes</th>
+                      <th>Note Types</th>
                       <th>Tags</th>
                     </tr>
                   </thead>
                   <tbody id="previewBody">
                     <tr>
-                      <td colspan="8" class="empty-state">Waiting for workbook</td>
+                      <td colspan="11" class="empty-state">Waiting for workbook</td>
                     </tr>
                   </tbody>
                 </table>

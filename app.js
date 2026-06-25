@@ -169,6 +169,9 @@ const PREVIEW_HEADERS = [
   "Address3",
   "Address4",
   "Post Code",
+  "Invoice Payment Due",
+  "Notes",
+  "Note Types",
   "Tags",
 ];
 
@@ -182,6 +185,8 @@ const state = {
     nameFixes: 0,
     addressFixes: 0,
     tagFixes: 0,
+    paymentFixes: 0,
+    noteFixes: 0,
   },
   outputFileName: "cleaned_customers.xlsx",
 };
@@ -191,10 +196,16 @@ const elements = {};
 document.addEventListener("DOMContentLoaded", () => {
   bindElements();
   bindEvents();
+  routeView();
   refreshIcons();
 });
 
 function bindElements() {
+  elements.pageTitle = document.querySelector("#pageTitle");
+  elements.homeButton = document.querySelector("#homeButton");
+  elements.homeView = document.querySelector("#homeView");
+  elements.customerView = document.querySelector("#customerView");
+  elements.moduleCards = document.querySelectorAll(".module-card");
   elements.fileInput = document.querySelector("#fileInput");
   elements.dropZone = document.querySelector("#dropZone");
   elements.downloadButton = document.querySelector("#downloadButton");
@@ -204,6 +215,8 @@ function bindElements() {
   elements.nameFixes = document.querySelector("#nameFixes");
   elements.addressFixes = document.querySelector("#addressFixes");
   elements.tagFixes = document.querySelector("#tagFixes");
+  elements.paymentFixes = document.querySelector("#paymentFixes");
+  elements.noteFixes = document.querySelector("#noteFixes");
   elements.typeCount = document.querySelector("#typeCount");
   elements.typeList = document.querySelector("#typeList");
   elements.previewCount = document.querySelector("#previewCount");
@@ -211,6 +224,20 @@ function bindElements() {
 }
 
 function bindEvents() {
+  elements.homeButton.addEventListener("click", () => {
+    window.location.hash = "";
+  });
+
+  elements.moduleCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      if (card.dataset.module === "customer") {
+        window.location.hash = "customer";
+      }
+    });
+  });
+
+  window.addEventListener("hashchange", routeView);
+
   elements.fileInput.addEventListener("change", (event) => {
     const [file] = event.target.files;
     if (file) {
@@ -247,6 +274,19 @@ function bindEvents() {
   elements.downloadButton.addEventListener("click", () => {
     downloadCleanedWorkbook();
   });
+}
+
+function routeView() {
+  const isCustomer = window.location.hash.replace("#", "").toLowerCase() === "customer";
+  elements.homeView.classList.toggle("view-hidden", isCustomer);
+  elements.customerView.classList.toggle("view-hidden", !isCustomer);
+  elements.pageTitle.textContent = isCustomer ? "Customer Cleaner" : "Import Cleaner";
+  elements.homeButton.hidden = !isCustomer;
+  elements.statusBadge.hidden = !isCustomer;
+  if (isCustomer) {
+    setStatus(state.cleanedRows.length ? "Cleaned" : "Ready", state.cleanedRows.length ? "good" : "");
+  }
+  refreshIcons();
 }
 
 async function processFile(file) {
@@ -314,7 +354,14 @@ function cleanWorkbookRows(rows) {
   });
 
   const typeCounts = new Map();
-  const stats = { rows: 0, nameFixes: 0, addressFixes: 0, tagFixes: 0 };
+  const stats = {
+    rows: 0,
+    nameFixes: 0,
+    addressFixes: 0,
+    tagFixes: 0,
+    paymentFixes: 0,
+    noteFixes: 0,
+  };
   const cleanedRows = dataRows.map((row) => {
     const sourceName = getSourceValue(row, headerMap, "Name");
     const cleanNameValue = normalizeSpaces(sourceName);
@@ -323,6 +370,12 @@ function cleanWorkbookRows(rows) {
     const sourceCustomerType = getSourceValue(row, headerMap, "Customer Type");
     const cleanCustomerType = normalizeSpaces(sourceCustomerType);
     const cleanAddress = cleanAddressFields(row, headerMap);
+    const sourcePaymentDue = getSourceValue(row, headerMap, "Invoice Payment Due");
+    const cleanPaymentDue = cleanInvoicePaymentDue(sourcePaymentDue);
+    const noteResult = cleanNotesAndTypes(
+      getSourceValue(row, headerMap, "Notes"),
+      getSourceValue(row, headerMap, "Note Types"),
+    );
 
     const output = TEMPLATE_HEADERS.map((header) => {
       if (header === "ID") return "";
@@ -335,6 +388,9 @@ function cleanWorkbookRows(rows) {
       if (header === "Customer Type") return cleanCustomerType;
       if (header === "Tags") return cleanTagsValue;
       if (header in cleanAddress) return cleanAddress[header];
+      if (header === "Invoice Payment Due") return cleanPaymentDue;
+      if (header === "Notes") return noteResult.notes;
+      if (header === "Note Types") return noteResult.noteTypes;
       return preserveCell(getSourceValue(row, headerMap, header));
     });
 
@@ -342,6 +398,8 @@ function cleanWorkbookRows(rows) {
     if (toText(sourceName) !== cleanNameValue) stats.nameFixes += 1;
     if (toText(sourceTags) !== cleanTagsValue) stats.tagFixes += 1;
     if (addressChanged(row, headerMap, cleanAddress)) stats.addressFixes += 1;
+    if (toText(sourcePaymentDue) !== toText(cleanPaymentDue)) stats.paymentFixes += 1;
+    if (noteResult.changed) stats.noteFixes += 1;
     if (cleanCustomerType) {
       typeCounts.set(cleanCustomerType, (typeCounts.get(cleanCustomerType) || 0) + 1);
     }
@@ -423,12 +481,16 @@ function cleanTags(value) {
   return tags.join(", ");
 }
 
+function cleanInvoicePaymentDue(value) {
+  return isZeroOnly(value) ? "" : preserveCell(value);
+}
+
 function cleanAddressFields(row, headerMap) {
   const fragments = [];
-  let postcode = cleanAddressText(getSourceValue(row, headerMap, "Post Code"));
+  let postcode = cleanAddressValue(getSourceValue(row, headerMap, "Post Code"));
 
   ["Address1", "Address2", "Address3", "Address4"].forEach((header) => {
-    const prepared = cleanAddressText(getSourceValue(row, headerMap, header));
+    const prepared = cleanAddressValue(getSourceValue(row, headerMap, header));
     if (!prepared) return;
 
     splitAddressParts(prepared).forEach((part) => {
@@ -450,6 +512,11 @@ function cleanAddressFields(row, headerMap) {
     Address4: compact[3] || "",
     "Post Code": normalizePostcode(postcode),
   };
+}
+
+function cleanAddressValue(value) {
+  const text = cleanAddressText(value);
+  return isSingleNumber(text) ? "" : text;
 }
 
 function cleanAddressText(value) {
@@ -477,7 +544,7 @@ function cleanAddressText(value) {
 function splitAddressParts(value) {
   return toText(value)
     .split(",")
-    .map((part) => cleanAddressText(part))
+    .map((part) => cleanAddressValue(part))
     .filter(Boolean);
 }
 
@@ -496,7 +563,7 @@ function extractPostcode(value) {
 }
 
 function normalizePostcode(value) {
-  return cleanAddressText(value).toUpperCase();
+  return cleanAddressValue(value).toUpperCase();
 }
 
 function dedupeFragments(fragments) {
@@ -504,7 +571,7 @@ function dedupeFragments(fragments) {
   const clean = [];
 
   fragments.forEach((fragment) => {
-    const value = cleanAddressText(fragment);
+    const value = cleanAddressValue(fragment);
     const key = value.toLowerCase();
     if (value && !seen.has(key)) {
       seen.add(key);
@@ -517,10 +584,61 @@ function dedupeFragments(fragments) {
 
 function addressChanged(row, headerMap, cleanAddress) {
   return ADDRESS_HEADERS.some((header) => {
-    const source = cleanAddressText(getSourceValue(row, headerMap, header));
-    const cleaned = cleanAddressText(cleanAddress[header]);
+    const source = cleanAddressValue(getSourceValue(row, headerMap, header));
+    const cleaned = cleanAddressValue(cleanAddress[header]);
     return source !== cleaned;
   });
+}
+
+function cleanNotesAndTypes(notesValue, noteTypesValue) {
+  const notes = splitNotes(notesValue);
+  const noteCount = notes.length;
+  const sourceNoteTypes = splitNoteTypes(noteTypesValue);
+  let cleanTypes = [];
+
+  if (noteCount > 0) {
+    if (sourceNoteTypes.length === 0) {
+      cleanTypes = Array(noteCount).fill("2");
+    } else {
+      cleanTypes = sourceNoteTypes.slice(0, noteCount);
+      while (cleanTypes.length < noteCount) {
+        cleanTypes.push(cleanTypes[cleanTypes.length - 1] || "2");
+      }
+    }
+  }
+
+  const cleanNotes = notes.join(" <Note_Separator> ");
+  const cleanNoteTypes = cleanTypes.join(",");
+  return {
+    notes: cleanNotes,
+    noteTypes: cleanNoteTypes,
+    changed:
+      toText(notesValue) !== cleanNotes ||
+      toText(noteTypesValue) !== cleanNoteTypes ||
+      sourceNoteTypes.length !== noteCount,
+  };
+}
+
+function splitNotes(value) {
+  return toText(value)
+    .split(/<\s*Note_Separator\s*>/i)
+    .map((note) => normalizeSpaces(note))
+    .filter(Boolean);
+}
+
+function splitNoteTypes(value) {
+  return toText(value)
+    .split(",")
+    .map((type) => normalizeSpaces(type))
+    .filter(Boolean);
+}
+
+function isSingleNumber(value) {
+  return /^\d+$/.test(normalizeSpaces(value));
+}
+
+function isZeroOnly(value) {
+  return /^0+(?:\.0+)?$/.test(normalizeSpaces(value));
 }
 
 function renderResults() {
@@ -528,6 +646,8 @@ function renderResults() {
   elements.nameFixes.textContent = state.stats.nameFixes.toLocaleString();
   elements.addressFixes.textContent = state.stats.addressFixes.toLocaleString();
   elements.tagFixes.textContent = state.stats.tagFixes.toLocaleString();
+  elements.paymentFixes.textContent = state.stats.paymentFixes.toLocaleString();
+  elements.noteFixes.textContent = state.stats.noteFixes.toLocaleString();
   renderTypes();
   renderPreview();
   refreshIcons();
@@ -563,7 +683,7 @@ function renderPreview() {
 
   if (!previewRows.length) {
     elements.previewBody.innerHTML =
-      '<tr><td colspan="8" class="empty-state">Waiting for workbook</td></tr>';
+      '<tr><td colspan="11" class="empty-state">Waiting for workbook</td></tr>';
     return;
   }
 
@@ -582,7 +702,14 @@ function renderPreview() {
 function resetResults() {
   state.cleanedRows = [];
   state.typeCounts = new Map();
-  state.stats = { rows: 0, nameFixes: 0, addressFixes: 0, tagFixes: 0 };
+  state.stats = {
+    rows: 0,
+    nameFixes: 0,
+    addressFixes: 0,
+    tagFixes: 0,
+    paymentFixes: 0,
+    noteFixes: 0,
+  };
   elements.downloadButton.disabled = true;
   renderResults();
 }
@@ -630,5 +757,7 @@ window.CustomerCleaner = {
   cleanWorkbookRows,
   cleanAddressFields,
   cleanTags,
+  cleanInvoicePaymentDue,
+  cleanNotesAndTypes,
   normalizeSpaces,
 };

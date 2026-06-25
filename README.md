@@ -7,9 +7,11 @@ Static browser app for cleaning customer import workbooks.
 - Export the Joblogic customer template column order with the instruction row.
 - Leave `ID` blank and copy the source customer `ID` into `External ID`.
 - Normalize the `Name` column by trimming and collapsing repeated whitespace.
-- Clean `Address1`, `Address2`, `Address3`, `Address4`, and `Post Code` by splitting comma-separated address parts, removing duplicate address fragments, compacting blank address lines, and moving UK postcodes into `Post Code`.
+- Clean `Address1`, `Address2`, `Address3`, `Address4`, and `Post Code` by splitting comma-separated address parts, removing duplicate address fragments, compacting blank address lines, moving UK postcodes into `Post Code`, and removing single-number-only address/postcode values such as `0`.
 - Show distinct `Customer Type` values with counts.
 - Clean `Tags` by trimming comma-separated values and removing duplicates.
+- Blank `Invoice Payment Due` when the value is `0`.
+- Split `Notes` by `<Note_Separator>` and make `Note Types` count match the number of notes.
 
 ## Local run
 
