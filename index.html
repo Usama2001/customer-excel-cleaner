@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Customer Cleaner</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Excel Operations</p>
+          <h1>Customer Cleaner</h1>
+        </div>
+        <div id="statusBadge" class="status-badge">Ready</div>
+      </header>
+
+      <main class="workspace">
+        <section class="control-panel" aria-label="Workbook controls">
+          <div class="panel-heading">
+            <div>
+              <h2>Source Excel</h2>
+              <p id="fileName" class="muted">No file selected</p>
+            </div>
+          </div>
+
+          <div
+            id="dropZone"
+            class="drop-zone"
+            role="button"
+            tabindex="0"
+            aria-label="Choose Excel file"
+          >
+            <input id="fileInput" type="file" accept=".xlsx,.xls,.xlsm,.csv" />
+            <i data-lucide="file-spreadsheet" aria-hidden="true"></i>
+            <span>Choose file</span>
+          </div>
+
+          <button id="downloadButton" class="primary-action" type="button" disabled>
+            <i data-lucide="download" aria-hidden="true"></i>
+            <span>Download cleaned</span>
+          </button>
+        </section>
+
+        <section class="results-panel" aria-label="Cleaner results">
+          <div class="metrics-grid">
+            <article class="metric">
+              <span>Rows</span>
+              <strong id="rowCount">0</strong>
+            </article>
+            <article class="metric">
+              <span>Name Fixes</span>
+              <strong id="nameFixes">0</strong>
+            </article>
+            <article class="metric">
+              <span>Address Fixes</span>
+              <strong id="addressFixes">0</strong>
+            </article>
+            <article class="metric">
+              <span>Tag Fixes</span>
+              <strong id="tagFixes">0</strong>
+            </article>
+          </div>
+
+          <div class="content-grid">
+            <section class="type-panel" aria-label="Customer types">
+              <div class="section-title">
+                <h2>Customer Types</h2>
+                <span id="typeCount">0</span>
+              </div>
+              <div id="typeList" class="type-list empty-state">None</div>
+            </section>
+
+            <section class="table-panel" aria-label="Cleaned preview">
+              <div class="section-title">
+                <h2>Preview</h2>
+                <span id="previewCount">0 rows</span>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Customer Type</th>
+                      <th>Address1</th>
+                      <th>Address2</th>
+                      <th>Address3</th>
+                      <th>Address4</th>
+                      <th>Post Code</th>
+                      <th>Tags</th>
+                    </tr>
+                  </thead>
+                  <tbody id="previewBody">
+                    <tr>
+                      <td colspan="8" class="empty-state">Waiting for workbook</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
